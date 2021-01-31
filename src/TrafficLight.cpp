@@ -48,7 +48,6 @@ void TrafficLight::waitForGreen()
     while (true)
     {
        TrafficLightPhase phase =  _queue.receive();
-       std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
        if (phase == TrafficLightPhase::green) break; 
        
@@ -75,42 +74,42 @@ void TrafficLight::cycleThroughPhases()
     // FP.2a : Implement the function with an infinite loop that measures the time between two loop cycles 
     // and toggles the current phase of the traffic light between red and green and sends an update method 
     // to the message queue using move semantics. The cycle duration should be a random value between 4 and 6 seconds. 
-    // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles.
-    //generator 
-   
-    int i = 1;
-
-     
-        //distributor
-
+    // Also, the while-loop should use std::this_thread::sleep_for to wait 1ms between two cycles
+    std::default_random_engine generator(std::random_device{}());
+    std::uniform_int_distribution<int> dist (4000,6000);
+    auto cycleTime = dist(generator);
+    auto timeDiff = 0;
+    bool change = true;
     while (true)
     {   
-        std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
+        std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
         
-        std::default_random_engine generator(std::random_device{}());
-        std::uniform_int_distribution<int> dist (4000,6000);
-
-        int cycleTime = dist(generator);
+     
         std::cout<< "Random cycle time: "<< cycleTime << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(cycleTime));
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(cycleTime));
         std::lock_guard<std::mutex> uLock(_mutex);
-        if (i%2)
-        {
-             _currentPhase = TrafficLightPhase::green;
-             std::cout<< "Traffic Light No"<< this->getID() << " is " << "green"<< std::endl;
-        }
-        else 
-        {
-            _currentPhase = TrafficLightPhase::red; 
-            std::cout<< "Traffic Light No"<< this->getID() << " is " << "red"<< std::endl;
-
+        if (cycleTime > timeDiff)
+        {   
+            if (change)
+            {
+                _currentPhase = TrafficLightPhase::green;
+                 std::cout<< "Traffic Light No"<< this->getID() << " is " << "green"<< std::endl;
+                change = false;
+            }
+            else 
+            {
+                _currentPhase = TrafficLightPhase::red;
+                 std::cout<< "Traffic Light No"<< this->getID() << " is " << "green"<< std::endl;
+                 change = true;
+            }
         }
         _queue.send(std::move(_currentPhase));
-        std::chrono::time_point<std::chrono::high_resolution_clock> finish = std::chrono::high_resolution_clock::now();
-        i++;
-        auto timeDiff = finish - start;
-        std::cout<< " Cycle time: " << timeDiff.count() << std::endl;
+        std::chrono::time_point<std::chrono::system_clock> finish = std::chrono::system_clock::now();
+         auto  timeDiff =  std::chrono::duration_cast<std::chrono::milliseconds>(finish-start).count();
+        
+        std::cout<< " Time Diff: " << timeDiff << std::endl;
     }
 }
 
